@@ -35,6 +35,12 @@
           <li class="nav-item">
             <a href="#contact" class="nav-link">Contact</a>
           </li>
+          <li class="nav-item">
+            <a href="#auth" class="nav-link">Login / Sign Up</a>
+          </li>
+          <li class="nav-item">
+            <a href="#cart" class="nav-link">Cart <span id="cartCount" class="cart-count">0</span></a>
+          </li>
         </ul>
         <div class="hamburger">
           <span class="bar"></span>
@@ -59,6 +65,111 @@
           src="https://images.unsplash.com/photo-1596040033229-a9821ebd058d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
           alt="Indian Spices"
         />
+      </div>
+    </section>
+
+    <!-- Auth Section -->
+    <section id="auth" class="page-section" style="display: none;">
+      <div class="container auth-container">
+        <h2 class="section-title">Welcome</h2>
+        <p class="section-subtitle">Login to your account or create a new one</p>
+
+        <div class="auth-tabs">
+          <button id="loginTab" class="auth-tab active">Login</button>
+          <button id="signupTab" class="auth-tab">Sign Up</button>
+        </div>
+
+        <div class="auth-forms">
+          <form id="loginForm" class="auth-form" autocomplete="on">
+            <input type="email" id="loginEmail" placeholder="Email" required />
+            <input type="password" id="loginPassword" placeholder="Password" required />
+            <button type="submit" class="btn btn-primary">Login</button>
+          </form>
+
+          <form id="signupForm" class="auth-form" style="display: none;" autocomplete="on">
+            <input type="text" id="signupName" placeholder="Full Name" required />
+            <input type="email" id="signupEmail" placeholder="Email" required />
+            <input type="password" id="signupPassword" placeholder="Password" required />
+            <input type="password" id="signupConfirm" placeholder="Confirm Password" required />
+            <button type="submit" class="btn btn-primary">Create Account</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cart Section -->
+    <section id="cart" class="page-section" style="display: none;">
+      <div class="container">
+        <h2 class="section-title">Your Cart</h2>
+        <p class="section-subtitle">Review items before checkout</p>
+
+        <div id="cartItems" class="cart-items"></div>
+
+        <div class="cart-summary">
+          <div class="cart-total-row">
+            <span>Total</span>
+            <span id="cartTotal">₹0</span>
+          </div>
+          <div class="cart-actions">
+            <button id="continueShopping" class="btn btn-secondary">Continue Shopping</button>
+            <button id="goToCheckout" class="btn btn-primary">Checkout</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Checkout Section -->
+    <section id="checkout" class="page-section" style="display: none;">
+      <div class="container">
+        <h2 class="section-title">Checkout</h2>
+        <p class="section-subtitle">Enter your details for delivery</p>
+        <form id="checkoutForm" class="checkout-form">
+          <input type="text" id="custName" placeholder="Full Name" required />
+          <input type="tel" id="custPhone" placeholder="Phone Number" pattern="[0-9]{10}" required />
+          <input type="email" id="custEmail" placeholder="Email" required />
+          <textarea id="custAddress" placeholder="Address" rows="4" required></textarea>
+          <div class="cart-actions">
+            <button type="button" id="backToCart" class="btn btn-secondary">Back to Cart</button>
+            <button type="submit" class="btn btn-primary">Proceed to Payment</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Payment Section -->
+    <section id="payment" class="page-section" style="display: none;">
+      <div class="container">
+        <h2 class="section-title">Payment</h2>
+        <p class="section-subtitle">Choose a payment method</p>
+
+        <form id="paymentChoiceForm" class="payment-choice-form">
+          <div class="payment-options inline">
+            <label><input type="radio" name="payChoice" value="upi" checked /> UPI</label>
+            <label><input type="radio" name="payChoice" value="cod" /> Cash on Delivery</label>
+            <label><input type="radio" name="payChoice" value="card" /> Card</label>
+          </div>
+
+          <div id="paymentChoiceDetails" class="payment-choice-details">
+            <!-- Filled dynamically based on choice -->
+          </div>
+
+          <div class="cart-actions">
+            <button type="button" id="backToCheckout" class="btn btn-secondary">Back</button>
+            <button type="submit" class="btn btn-primary">Proceed</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Confirmation Section -->
+    <section id="confirmation" class="page-section" style="display: none;">
+      <div class="container confirmation-container">
+        <div class="confirmation-card">
+          <i class="fas fa-check-circle"></i>
+          <h2>Order Confirmed!</h2>
+          <p id="orderSummary">Thank you for your order.</p>
+          <a href="#home" class="btn btn-primary" id="goHomeAfterOrder">Continue Shopping</a>
+        </div>
       </div>
     </section>
 

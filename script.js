@@ -5,6 +5,7 @@
 
 // Global Variables
 let cart = [];
+let currentUser = null;
 let totalAmount = 0;
 
 // DOM Content Loaded Event
@@ -21,6 +22,10 @@ function initializeApp() {
   setupCartFunctionality();
   setupAnimations();
   setupFormValidations();
+  hydrateFromStorage();
+  setupAuthSection();
+  setupCartPage();
+  setupCheckoutFlow();
 }
 
 // ===============================================
@@ -102,6 +107,7 @@ function setupCartFunctionality() {
         name: spiceName,
         price: spicePrice,
         image: spiceImage,
+        qty: 1,
       });
 
       // Visual feedback
@@ -117,8 +123,18 @@ function setupCartFunctionality() {
 }
 
 function addToCart(item) {
-  cart.push(item);
+  // Normalize price to number (₹xxx/kg → xxx)
+  const priceNumber = parseInt(String(item.price).replace(/[^0-9]/g, ""), 10) || 0;
+
+  // Merge if same name
+  const existing = cart.find((p) => p.name === item.name);
+  if (existing) {
+    existing.qty += 1;
+  } else {
+    cart.push({ ...item, priceNumber });
+  }
   updateCartDisplay();
+  persistCart();
 
   // Show notification
   showNotification(`${item.name} added to cart!`, "success");
@@ -126,10 +142,322 @@ function addToCart(item) {
 
 function updateCartDisplay() {
   // Calculate total items and amount
-  const totalItems = cart.length;
+  const totalItems = cart.reduce((sum, i) => sum + (i.qty || 1), 0);
+  const cartCountEl = document.getElementById("cartCount");
+  if (cartCountEl) cartCountEl.textContent = totalItems;
 
   // You can add a cart icon and counter here
   console.log(`Cart updated: ${totalItems} items`);
+}
+
+function persistCart() {
+  try {
+    localStorage.setItem("sc_cart", JSON.stringify(cart));
+  } catch {}
+}
+
+function hydrateFromStorage() {
+  try {
+    const stored = localStorage.getItem("sc_cart");
+    if (stored) cart = JSON.parse(stored);
+    const user = localStorage.getItem("sc_user");
+    if (user) currentUser = JSON.parse(user);
+  } catch {}
+  updateCartDisplay();
+  renderCartPage();
+  reflectAuthState();
+}
+
+// ===============================================
+// AUTH SECTION
+// ===============================================
+
+function setupAuthSection() {
+  const loginTab = document.getElementById("loginTab");
+  const signupTab = document.getElementById("signupTab");
+  const loginForm = document.getElementById("loginForm");
+  const signupForm = document.getElementById("signupForm");
+
+  if (loginTab && signupTab && loginForm && signupForm) {
+    loginTab.addEventListener("click", () => switchAuthTab("login"));
+    signupTab.addEventListener("click", () => switchAuthTab("signup"));
+
+    loginForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value.trim();
+      if (!email || !password) return;
+      // Demo auth: accept any; persist
+      currentUser = { name: email.split("@")[0], email };
+      try { localStorage.setItem("sc_user", JSON.stringify(currentUser)); } catch {}
+      showNotification("Logged in successfully", "success");
+      reflectAuthState();
+      navigateToSection("spices");
+    });
+
+    signupForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const name = document.getElementById("signupName").value.trim();
+      const email = document.getElementById("signupEmail").value.trim();
+      const pass = document.getElementById("signupPassword").value;
+      const conf = document.getElementById("signupConfirm").value;
+      if (!name || !email || !pass || pass !== conf) {
+        showNotification("Please fill all fields and confirm password.", "error");
+        return;
+      }
+      currentUser = { name, email };
+      try { localStorage.setItem("sc_user", JSON.stringify(currentUser)); } catch {}
+      showNotification("Account created and logged in", "success");
+      reflectAuthState();
+      navigateToSection("spices");
+    });
+  }
+}
+
+function switchAuthTab(which) {
+  const loginTab = document.getElementById("loginTab");
+  const signupTab = document.getElementById("signupTab");
+  const loginForm = document.getElementById("loginForm");
+  const signupForm = document.getElementById("signupForm");
+  if (which === "login") {
+    loginTab.classList.add("active");
+    signupTab.classList.remove("active");
+    loginForm.style.display = "block";
+    signupForm.style.display = "none";
+  } else {
+    signupTab.classList.add("active");
+    loginTab.classList.remove("active");
+    signupForm.style.display = "block";
+    loginForm.style.display = "none";
+  }
+}
+
+function reflectAuthState() {
+  // Could update navbar later (e.g., show user name)
+}
+
+function navigateToSection(id) {
+  const sections = document.querySelectorAll("section.page-section, section.hero, section.spices-section, section.features-section, section.about-section, section.contact-section");
+  sections.forEach((s) => {
+    if (s.id === id || (id === "home" && s.classList.contains("hero"))) {
+      s.style.display = "block";
+      s.scrollIntoView({ behavior: "smooth" });
+    } else if (s.classList.contains("hero") || s.classList.contains("spices-section") || s.classList.contains("features-section") || s.classList.contains("about-section") || s.classList.contains("contact-section")) {
+      // Keep main pages visible unless navigating to a specific page-section
+      if (id === "cart" || id === "auth" || id === "checkout" || id === "payment" || id === "confirmation") {
+        s.style.display = "none";
+      } else {
+        s.style.display = "";
+      }
+    } else {
+      s.style.display = s.classList.contains("page-section") ? "none" : s.style.display;
+    }
+  });
+}
+
+// ===============================================
+// CART PAGE RENDERING
+// ===============================================
+
+function setupCartPage() {
+  const continueBtn = document.getElementById("continueShopping");
+  const checkoutBtn = document.getElementById("goToCheckout");
+  if (continueBtn) continueBtn.addEventListener("click", () => navigateToSection("spices"));
+  if (checkoutBtn) checkoutBtn.addEventListener("click", () => {
+    if (cart.length === 0) {
+      showNotification("Your cart is empty", "warning");
+      return;
+    }
+    navigateToSection("checkout");
+  });
+
+  // Intercept clicks on nav Cart link to render
+  const cartLink = document.querySelector('a[href="#cart"]');
+  if (cartLink) {
+    cartLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      renderCartPage();
+      navigateToSection("cart");
+    });
+  }
+}
+
+function renderCartPage() {
+  const list = document.getElementById("cartItems");
+  const totalEl = document.getElementById("cartTotal");
+  if (!list || !totalEl) return;
+  if (cart.length === 0) {
+    list.innerHTML = '<p style="text-align:center;color:#7f8c8d;">Your cart is empty.</p>';
+    totalEl.textContent = "₹0";
+    return;
+  }
+
+  let total = 0;
+  list.innerHTML = cart
+    .map((item, idx) => {
+      const unit = item.priceNumber || parseInt(String(item.price).replace(/[^0-9]/g, ""), 10) || 0;
+      const sub = unit * (item.qty || 1);
+      total += sub;
+      return `
+        <div class="cart-item">
+          <img src="${item.image}" alt="${item.name}" />
+          <div class="cart-item-info">
+            <h4>${item.name}</h4>
+            <p class="unit">₹${unit} / kg</p>
+            <div class="qty-controls">
+              <button data-idx="${idx}" class="qty-minus">-</button>
+              <input type="number" min="1" value="${item.qty || 1}" data-idx="${idx}" class="qty-input" />
+              <button data-idx="${idx}" class="qty-plus">+</button>
+            </div>
+          </div>
+          <div class="cart-item-actions">
+            <div class="subtotal">₹${sub}</div>
+            <button data-idx="${idx}" class="remove-item">Remove</button>
+          </div>
+        </div>`;
+    })
+    .join("");
+
+  totalEl.textContent = `₹${total}`;
+
+  // Wire controls
+  list.querySelectorAll(".remove-item").forEach((btn) =>
+    btn.addEventListener("click", (e) => {
+      const idx = parseInt(e.currentTarget.getAttribute("data-idx"), 10);
+      cart.splice(idx, 1);
+      persistCart();
+      updateCartDisplay();
+      renderCartPage();
+    })
+  );
+  list.querySelectorAll(".qty-minus").forEach((btn) =>
+    btn.addEventListener("click", (e) => changeQty(e.currentTarget.getAttribute("data-idx"), -1))
+  );
+  list.querySelectorAll(".qty-plus").forEach((btn) =>
+    btn.addEventListener("click", (e) => changeQty(e.currentTarget.getAttribute("data-idx"), 1))
+  );
+  list.querySelectorAll(".qty-input").forEach((inp) =>
+    inp.addEventListener("change", (e) => setQty(e.currentTarget.getAttribute("data-idx"), parseInt(e.currentTarget.value, 10)))
+  );
+}
+
+function changeQty(indexStr, delta) {
+  const idx = parseInt(indexStr, 10);
+  const item = cart[idx];
+  if (!item) return;
+  item.qty = Math.max(1, (item.qty || 1) + delta);
+  persistCart();
+  renderCartPage();
+  updateCartDisplay();
+}
+
+function setQty(indexStr, qty) {
+  const idx = parseInt(indexStr, 10);
+  const item = cart[idx];
+  if (!item) return;
+  item.qty = Math.max(1, qty || 1);
+  persistCart();
+  renderCartPage();
+  updateCartDisplay();
+}
+
+// ===============================================
+// CHECKOUT → PAYMENT → CONFIRMATION
+// ===============================================
+
+function setupCheckoutFlow() {
+  const backToCart = document.getElementById("backToCart");
+  if (backToCart) backToCart.addEventListener("click", () => navigateToSection("cart"));
+
+  const checkoutForm = document.getElementById("checkoutForm");
+  if (checkoutForm) checkoutForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (cart.length === 0) {
+      showNotification("Your cart is empty", "warning");
+      return;
+    }
+    const details = {
+      name: document.getElementById("custName").value.trim(),
+      phone: document.getElementById("custPhone").value.trim(),
+      email: document.getElementById("custEmail").value.trim(),
+      address: document.getElementById("custAddress").value.trim(),
+    };
+    if (!details.name || !details.phone || !details.email || !details.address) {
+      showNotification("Please fill all details", "error");
+      return;
+    }
+    try { localStorage.setItem("sc_checkout", JSON.stringify(details)); } catch {}
+    renderPaymentChoice();
+    navigateToSection("payment");
+  });
+
+  const backToCheckout = document.getElementById("backToCheckout");
+  if (backToCheckout) backToCheckout.addEventListener("click", () => navigateToSection("checkout"));
+
+  const paymentChoiceForm = document.getElementById("paymentChoiceForm");
+  if (paymentChoiceForm) paymentChoiceForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const method = document.querySelector('input[name="payChoice"]:checked').value;
+    confirmOrder(method);
+  });
+
+  const goHomeAfterOrder = document.getElementById("goHomeAfterOrder");
+  if (goHomeAfterOrder) goHomeAfterOrder.addEventListener("click", () => {
+    // reset state
+    cart = [];
+    persistCart();
+    updateCartDisplay();
+  });
+}
+
+function renderPaymentChoice() {
+  const container = document.getElementById("paymentChoiceDetails");
+  if (!container) return;
+  const selected = document.querySelector('input[name="payChoice"]:checked').value;
+  let html = "";
+  if (selected === "upi") {
+    html = `<input type="text" id="upiChoice" placeholder="UPI ID (e.g., user@upi)" required />`;
+  } else if (selected === "card") {
+    html = `<input type=\"text\" id=\"cardChoice\" placeholder=\"Card Number\" required />
+            <div class=\"card-row\"><input type=\"text\" id=\"cardExpChoice\" placeholder=\"MM/YY\" required />
+            <input type=\"text\" id=\"cardCvvChoice\" placeholder=\"CVV\" required /></div>`;
+  } else {
+    html = `<p>Cash will be collected upon delivery.</p>`;
+  }
+  container.innerHTML = html;
+
+  // react on change
+  document.querySelectorAll('input[name="payChoice"]').forEach((r) =>
+    r.addEventListener("change", renderPaymentChoice)
+  );
+}
+
+function confirmOrder(method) {
+  // Minimal validation for selected method fields
+  if (method === "upi") {
+    const v = document.getElementById("upiChoice").value.trim();
+    if (!v) return showNotification("Enter a valid UPI ID", "error");
+  }
+  if (method === "card") {
+    const n = document.getElementById("cardChoice").value.trim();
+    const e = document.getElementById("cardExpChoice").value.trim();
+    const c = document.getElementById("cardCvvChoice").value.trim();
+    if (!n || !e || !c) return showNotification("Enter complete card details", "error");
+  }
+
+  // Build order summary
+  const details = (() => {
+    try { return JSON.parse(localStorage.getItem("sc_checkout") || "{}"); } catch { return {}; }
+  })();
+  const total = cart.reduce((sum, i) => (i.priceNumber || 0) * (i.qty || 1) + sum, 0);
+  const itemsText = cart.map((i) => `${i.name} x ${i.qty || 1}`).join(", ");
+  const summary = `Order for ${details.name || "Customer"} (₹${total}) — Items: ${itemsText}. Payment: ${method.toUpperCase()}.`;
+
+  const summaryEl = document.getElementById("orderSummary");
+  if (summaryEl) summaryEl.textContent = summary;
+
+  navigateToSection("confirmation");
+  showNotification("Order confirmed!", "success");
 }
 
 // ===============================================
